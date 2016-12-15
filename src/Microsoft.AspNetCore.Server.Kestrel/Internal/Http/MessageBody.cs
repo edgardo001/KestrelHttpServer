@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public Task<int> ReadAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken = default(CancellationToken))
         {
             var task = PeekAsync(cancellationToken);
-
+            
             if (!task.IsCompleted)
             {
                 TryProduceContinue();
@@ -48,6 +48,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private async Task<int> ReadAsyncAwaited(ValueTask<ArraySegment<byte>> currentTask, ArraySegment<byte> buffer)
         {
+            var delay = Task.Delay(_context.ServerOptions.Limits.RequestBodyReadTimeout);
+            var task = await Task.WhenAny(currentTask.AsTask(), delay);
+
+            if (task == delay)
+            {
+                _context.RejectRequest(RequestRejectionReason.RequestTimeout);
+            }
+
             return CopyReadSegment(await currentTask, buffer);
         }
 
@@ -114,6 +122,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             while (true)
             {
+                var delay = Task.Delay(_context.ServerOptions.Limits.RequestBodyReadTimeout);
+                var task = await Task.WhenAny(peekTask.AsTask(), delay);
+
+                if (task == delay)
+                {
+                    _context.RejectRequest(RequestRejectionReason.RequestTimeout);
+                }
+
                 var segment = await peekTask;
 
                 if (segment.Count == 0)

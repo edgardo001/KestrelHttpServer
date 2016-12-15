@@ -28,6 +28,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         private TimeSpan _requestHeadersTimeout = TimeSpan.FromSeconds(30);
 
+        private TimeSpan _requestBodyReadTimeout = TimeSpan.FromSeconds(10);
+
         /// <summary>
         /// Gets or sets the maximum size of the response buffer before write
         /// calls begin to block or return tasks that don't complete until the
@@ -177,6 +179,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             set
             {
                 _requestHeadersTimeout = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the maximum amount of time the server will wait for data from the network when attempting to read the request body.
+        /// </summary>
+        /// <remarks>
+        /// Defaults to 10 seconds.
+        /// </remarks>
+        public TimeSpan RequestBodyReadTimeout
+        {
+            get
+            {
+                return _requestBodyReadTimeout;
+            }
+            set
+            {
+                _requestBodyReadTimeout = value;
             }
         }
     }
