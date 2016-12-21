@@ -187,5 +187,25 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             o.RequestHeadersTimeout = TimeSpan.FromSeconds(seconds);
             Assert.Equal(seconds, o.RequestHeadersTimeout.TotalSeconds);
         }
+
+        [Fact]
+        public void RequestBodyReadTimeoutDefault()
+        {
+            Assert.Equal(TimeSpan.FromSeconds(10), new KestrelServerLimits().RequestBodyReadTimeout);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(0.5)]
+        [InlineData(1.0)]
+        [InlineData(2.5)]
+        [InlineData(10)]
+        [InlineData(60)]
+        public void RequestBodyReadTimeoutValid(double seconds)
+        {
+            var o = new KestrelServerLimits();
+            o.RequestBodyReadTimeout = TimeSpan.FromSeconds(seconds);
+            Assert.Equal(seconds, o.RequestBodyReadTimeout.TotalSeconds);
+        }
     }
 }
