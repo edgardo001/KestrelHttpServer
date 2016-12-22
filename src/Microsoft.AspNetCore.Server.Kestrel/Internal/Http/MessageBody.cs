@@ -281,7 +281,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             // Avoid slowing down most common case
-            if (!object.ReferenceEquals(context.Method, HttpMethods.Get))
+            if (!ReferenceEquals(context.Method, HttpMethods.Get))
             {
                 // If we got here, request contains no Content-Length or Transfer-Encoding header.
                 // Reject with 411 Length Required.
@@ -330,7 +330,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return new ValueTask<ArraySegment<byte>>();
                 }
 
-                var task = _context.Input.PeekAsync();
+                var task = _context.Input.PeekAsync(cancellationToken);
 
                 if (task.IsCompleted)
                 {

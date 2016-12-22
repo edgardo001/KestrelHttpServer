@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
@@ -49,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static ValueTask<ArraySegment<byte>> PeekAsync(this SocketInput input)
+        public static ValueTask<ArraySegment<byte>> PeekAsync(this SocketInput input, CancellationToken cancellationToken = default(CancellationToken))
         {
             while (input.IsCompleted)
             {
@@ -65,14 +66,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
             }
 
-            return new ValueTask<ArraySegment<byte>>(input.PeekAsyncAwaited());
+            return new ValueTask<ArraySegment<byte>>(input.PeekAsyncAwaited(cancellationToken));
         }
 
-        private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this SocketInput input)
+        private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this SocketInput input, CancellationToken cancellationToken)
         {
             while (true)
             {
+                cancellationToken.Register((state) =>
+                {
+                    var self = (SocketInput)state;
+                    self.CompleteAwaiting();
+                }, input);
+
                 await input;
+
+                cancellationToken.ThrowIfCancellationRequested();
 
                 var fin = input.CheckFinOrThrow();
 
@@ -80,7 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var segment = begin.PeekArraySegment();
                 input.ConsumingComplete(begin, begin);
 
-                if (segment.Count != 0 || fin)
+                if (segment.Count != 0 || fin || cancellationToken.IsCancellationRequested)
                 {
                     return segment;
                 }

@@ -453,6 +453,45 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             }
         }
 
+        [Fact]
+        public async Task ReadCanBeCanceled()
+        {
+            var cts = new CancellationTokenSource();
+            var tcs = new TaskCompletionSource<object>();
+
+            using (var server = new TestServer(async context =>
+            {
+                try
+                {
+                    tcs.SetResult(null);
+                    await context.Request.Body.ReadAsync(new byte[1], 0, 1, cts.Token).TimeoutAfter(TimeSpan.FromSeconds(10));
+                }
+                catch (OperationCanceledException)
+                {
+                    context.Response.ContentLength = 13;
+                    await context.Response.WriteAsync("read canceled");
+                }
+            }))
+            {
+                using (var connection = new TestConnection(server.Port))
+                {
+                    await connection.Send(
+                        "POST / HTTP/1.1",
+                        "Content-Length: 1",
+                        "",
+                        "");
+                    await tcs.Task;
+                    cts.CancelAfter(TimeSpan.FromSeconds(5));
+                    await connection.ReceiveEnd(
+                        "HTTP/1.1 200 OK",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "Content-Length: 13",
+                        "",
+                        "read canceled").TimeoutAfter(TimeSpan.FromSeconds(10));
+                }
+            }
+        }
+
         private async Task TestRemoteIPAddress(string registerAddress, string requestAddress, string expectAddress)
         {
             var builder = new WebHostBuilder()
